@@ -5,6 +5,13 @@
 
 // v28 (free - does not include support)
 // make a copy of this template sheet first & copy your URL into the ss variable on line 11. template: https://docs.google.com/spreadsheets/d/1aGOBOLNUjEIwwlYuS0D3fcIimRnzGdLSJxVd9rHOQ0E/copy
+//
+// Field verification against Google Ads API v23 (January 2026):
+// - asset_group_asset.performance_label: DEPRECATED as of June 5, 2025. Still returned but being phased out.
+//   Google replaced it with full per-asset performance statistics.
+// - segments.ad_network_type: now returns real channel breakdown for PMax (Search/YouTube/Display/Gmail/Maps/Discover)
+//   from API v23 onward. Channel data available for dates on or after June 1, 2025.
+//   Added to campQuery below for channel-level reporting.
 
 function main() {
   let ss = SpreadsheetApp.openByUrl('');
@@ -53,7 +60,7 @@ function main() {
   let ytId        = ' asset.youtube_video_asset.youtube_video_id ';
   let agId        = ' asset_group.id ';
   let assetFtype  = ' asset_group_asset.field_type ';
-  let adPmaxPerf  = ' asset_group_asset.performance_label ';
+  let adPmaxPerf  = ' asset_group_asset.performance_label '; // DEPRECATED since June 5, 2025 — use per-asset metrics instead
   let agStrength  = ' asset_group.ad_strength ';
   let agStatus    = ' asset_group.status ';
   let asgName     = ' asset_group.name ';
@@ -69,6 +76,7 @@ function main() {
   let inter       = ' AND segments.asset_interaction_target.interaction_on_this_asset = "TRUE" ';
   let date07      = ' segments.date DURING LAST_7_DAYS ';
   let date30      = ' segments.date DURING LAST_30_DAYS ';
+  let adNetType   = ' segments.ad_network_type '; // NEW in API v23: real channel breakdown for PMax (Search/YouTube/Display/Gmail/Maps/Discover). Data from June 1, 2025 onward.
   let order       = ' ORDER BY campaign.name ';
   let orderImpr   = ' ORDER BY metrics.impressions DESC ';
 
@@ -84,7 +92,7 @@ function main() {
   let prodDate = ' segments.date BETWEEN "' + Utilities.formatDate(prod180, timeZone, 'yyyy-MM-dd') + '" AND "' + Utilities.formatDate(to, timeZone, 'yyyy-MM-dd') + '"'
 
   // build queries
-  let cd = [segDate, campName, cost, conv, value, views, cpv, impr, clicks, chType] // campaign by day
+  let cd = [segDate, campName, cost, conv, value, views, cpv, impr, clicks, chType, adNetType] // campaign by day — adNetType added (API v23: real PMax channel breakdown)
   let campQuery = 'SELECT ' + cd.join(',') +
       ' FROM campaign ' +
       ' WHERE ' + date30 + pMaxOnly + order ;

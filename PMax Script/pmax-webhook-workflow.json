@@ -1,0 +1,210 @@
+{
+  "name": "PMax - Receber Dados via Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pmax-report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a3f1c2d4-e5b6-4a7f-8c9d-0e1f2a3b4c5d",
+      "name": "Webhook PMax",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "pmax-report-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b4e2d3c5-f6a7-4b8e-9d0c-1f2e3a4b5c6d",
+      "name": "Resposta 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c5f3e4d6-a7b8-4c9f-0e1d-2f3a4b5c6d7e",
+              "leftValue": "={{ $json.batch }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d6a4f5e7-b8c9-4d0a-1f2e-3a4b5c6d7e8f",
+      "name": "Primeiro Batch?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Webhook PMax').first().json.report }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "e7b5a6f8-c9d0-4e1b-2a3f-4b5c6d7e8f9a",
+      "name": "Limpar Aba",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 160],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CREDENTIALS_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai as linhas do payload enviado pelo script PMax v29-webhook\n// e adiciona metadados de controle a cada linha\nconst payload = $('Webhook PMax').first().json;\nconst { report, account_id, timestamp, batch, total_batches, total_rows, rows } = payload;\n\nif (!rows || rows.length === 0) {\n  return [];\n}\n\nreturn rows.map(row => ({\n  json: {\n    _report:        report,\n    _account_id:    account_id,\n    _timestamp:     timestamp,\n    _batch:         batch,\n    _total_batches: total_batches,\n    _total_rows:    total_rows,\n    ...row\n  }\n}));"
+      },
+      "id": "f8c6b7a9-d0e1-4f2c-3b4a-5c6d7e8f9a0b",
+      "name": "Extrair Linhas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_SPREADSHEET_ID_HERE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json._report }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "a9d7c8b0-e1f2-4a3d-4c5b-6d7e8f9a0b1c",
+      "name": "Salvar no Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1340, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CREDENTIALS_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook PMax": {
+      "main": [
+        [
+          {
+            "node": "Resposta 200 OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resposta 200 OK": {
+      "main": [
+        [
+          {
+            "node": "Primeiro Batch?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Primeiro Batch?": {
+      "main": [
+        [
+          {
+            "node": "Limpar Aba",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extrair Linhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpar Aba": {
+      "main": [
+        [
+          {
+            "node": "Extrair Linhas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Linhas": {
+      "main": [
+        [
+          {
+            "node": "Salvar no Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b0e8d9c1-f2a3-4b0e-5d6c-7e8f9a0b1c2d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "id": "c1f9e0d2-a3b4-4c1f-6e7d-8f9a0b1c2d3e",
+  "tags": []
+}
